@@ -1,6 +1,9 @@
 package io.iclue.backgroundvideo;
 
 import android.content.pm.PackageManager;
+
+import android.content.Context; 
+import android.app.Activity;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.ViewGroup;
@@ -31,10 +34,12 @@ public class BackgroundVideo extends CordovaPlugin {
     private VideoOverlay videoOverlay;
     private CallbackContext callbackContext;
     private JSONArray requestArgs;
+    private Activity mActivity; 
 
     @Override
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         super.initialize(cordova, webView);
+        mActivity = cordova.getActivity();
         FILE_PATH = cordova.getActivity().getFilesDir().toString() + "/";
         //FILE_PATH = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES).toString() + "/";
     }
@@ -101,23 +106,15 @@ public class BackgroundVideo extends CordovaPlugin {
         final boolean recordAudio = args.getBoolean(2);
 
         if (videoOverlay == null) {
-            videoOverlay = new VideoOverlay(cordova.getActivity()); //, getFilePath());
+            videoOverlay = new VideoOverlay(mActivity); //, getFilePath());
 
-            cordova.getActivity().runOnUiThread(new Runnable() {
+            mActivity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    cordova.getActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                    mActivity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                     try {
-                        // Get screen dimensions
-                        DisplayMetrics displaymetrics = new DisplayMetrics();
-                        cordova.getActivity().getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
-
-                        // NOTE: GT-I9300 testing required wrapping view in relative layout for setAlpha to work.
-                        RelativeLayout containerView = new RelativeLayout(cordova.getActivity());
-                        containerView.setAlpha(0.2f);
-                        containerView.addView(videoOverlay, new ViewGroup.LayoutParams(displaymetrics.widthPixels, displaymetrics.heightPixels));
-
-                        cordova.getActivity().addContentView(containerView, new ViewGroup.LayoutParams(displaymetrics.widthPixels, displaymetrics.heightPixels));
+                        // código añadido
+                        initPreviewSurface();
                     } catch (Exception e) {
                         Log.e(TAG, "Error during preview create", e);
                         callbackContext.error(TAG + ": " + e.getMessage());
@@ -129,7 +126,7 @@ public class BackgroundVideo extends CordovaPlugin {
         videoOverlay.setCameraFacing(cameraFace);
         videoOverlay.setRecordAudio(recordAudio);
 
-        cordova.getActivity().runOnUiThread(new Runnable() {
+        mActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -141,6 +138,77 @@ public class BackgroundVideo extends CordovaPlugin {
             }
         });
     }
+    
+    
+    //texture añadida
+    private boolean initPreviewSurface() {
+        if (mActivity != null) {
+            mTextureView = new TextureView(mActivity);
+            mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
+            WindowManager mW = (WindowManager) mActivity.getSystemService(Context.WINDOW_SERVICE);
+            int screenWidth = mW.getDefaultDisplay().getWidth();
+            int screenHeight = mW.getDefaultDisplay().getHeight();
+            mActivity.addContentView(mTextureView, new ViewGroup.LayoutParams(screenWidth, screenHeight));
+            if (LOGGING) Log.i(TAG, "Camera preview surface initialized.");
+            return true;
+        } else {
+            if (LOGGING) Log.w(TAG, "Could not initialize preview surface.");
+            return false;
+        }
+    }
+
+
+    private final TextureView.SurfaceTextureListener mSurfaceTextureListener = new TextureView.SurfaceTextureListener() {
+        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+            mCamera = getCameraInstance();
+
+            if (mCamera != null) {
+
+                mTextureView.setVisibility(View.INVISIBLE);
+                mTextureView.setAlpha(0);
+
+                try {
+                    setPreviewParameters();
+
+                    mCamera.setPreviewTexture(surface);
+                    mCamera.setDisplayOrientation(mDisplayOrientation);
+                    mCamera.setErrorCallback(mCameraErrorCallback);
+                    mCamera.setPreviewCallback(mCameraPreviewCallback);
+
+                    mFileId = 0;
+
+                    mCamera.startPreview();
+                    mPreviewing = true;
+                    if (LOGGING) Log.i(TAG, "Camera [" + mCameraId + "] started.");
+                } catch (Exception e) {
+                    mPreviewing = false;
+                    if (LOGGING) Log.e(TAG, "Failed to init preview: " + e.getMessage());
+                    stopCamera();
+                }
+            } else {
+                mPreviewing = false;
+                if (LOGGING) Log.w(TAG, "Could not get camera instance.");
+            }
+        }
+
+        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+            // Ignored, Camera does all the work for us
+        }
+
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+            stopCamera();
+            return true;
+        }
+
+        public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+            // Invoked every time there's a new Camera preview frame
+        }
+    };
+
+
+
+
+
 
     private void Stop() throws JSONException {
         cordova.getActivity().runOnUiThread(new Runnable() {
