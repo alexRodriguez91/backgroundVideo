@@ -36,7 +36,7 @@
     CGRect viewRect = CGRectMake(
                                  1,
                                  1,
-                                 self.webView.superview.frame.size.width -(self.webView.superview.frame.size.width / 10),
+                                 self.webView.superview.frame.size.width - (self.webView.superview.frame.size.width / 10),
                                  self.webView.superview.frame.size.height
                                  );
     self.parentView = [[UIView alloc] initWithFrame:viewRect];
@@ -45,7 +45,7 @@
     self.parentView.backgroundColor = [UIColor clearColor];
     self.view = [[UIView alloc] initWithFrame: self.parentView.bounds];
     [self.parentView addSubview: view];
-    view.alpha = 1f;
+    // view.alpha = 1f;
     self.parentView.userInteractionEnabled = NO;
 
     //camera stuff

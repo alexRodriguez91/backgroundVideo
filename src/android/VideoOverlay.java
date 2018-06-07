@@ -91,26 +91,28 @@ public class VideoOverlay extends ViewGroup implements TextureView.SurfaceTextur
             mRecorder.setCamera(mCamera);
 
             CamcorderProfile profile;
-            if (CamcorderProfile.hasProfile(mCameraId, CamcorderProfile.QUALITY_1080P)) {
-                profile = CamcorderProfile.get(mCameraId, CamcorderProfile.QUALITY_1080P);
+            if (CamcorderProfile.hasProfile(mCameraId, CamcorderProfile.QUALITY_480P)) {
+                profile = CamcorderProfile.get(mCameraId, CamcorderProfile.QUALITY_480P);
+            } else if (CamcorderProfile.hasProfile(mCameraId, CamcorderProfile.QUALITY_QCIF)) {
+                profile = CamcorderProfile.get(mCameraId, CamcorderProfile.QUALITY_QCIF);
             } else {
-                profile = CamcorderProfile.get(mCameraId, CamcorderProfile.QUALITY_HIGH);
+                profile = CamcorderProfile.get(mCameraId, CamcorderProfile.QUALITY_LOW);
             }
                 // 640 480
             Camera.Size lowestRes = CameraHelper.getLowestResolution(cameraParameters);
-            profile.videoFrameWidth = 640;
-            profile.videoFrameHeight = 480;
+            profile.videoFrameWidth = 352;
+            profile.videoFrameHeight = 288;
 
             mRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
             if (true) {
                 // With audio
                 mRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
                 mRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-                mRecorder.setVideoFrameRate(profile.videoFrameRate);
+                mRecorder.setVideoFrameRate(18);
                 mRecorder.setVideoSize(profile.videoFrameWidth, profile.videoFrameHeight);
-                mRecorder.setVideoEncodingBitRate(profile.videoBitRate);
+                mRecorder.setVideoEncodingBitRate(500000);
                 mRecorder.setAudioEncodingBitRate(profile.audioBitRate);
-                mRecorder.setAudioChannels(profile.audioChannels);
+                mRecorder.setAudioChannels(1);
                 mRecorder.setAudioSamplingRate(profile.audioSampleRate);
                 mRecorder.setVideoEncoder(profile.videoCodec);
                 mRecorder.setAudioEncoder(profile.audioCodec);
